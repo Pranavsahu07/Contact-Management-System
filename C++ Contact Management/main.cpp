@@ -1,149 +1,137 @@
-// including header files
-#include<iostream>
-#include<conio.h>
-#include<fstream>
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <string>
+#include <algorithm>
+
 using namespace std;
 
-// global variables
-string fname,lname,phone_num;
+struct Contact {
+    string name;
+    string phone;
+    string email;
+};
 
-// Functions
-void addContact();
-void searchContact();
-void help();
-void self_exit();
-bool check_digits(string);
-bool check_numbers(string);
-
-int main()
-{
-    short int choice;
-    system("cls");
-    system("color 0A");
-    cout << "\n\n\n\t\t\tContact Management.";
-    cout << "\n\n\t1. Add Contact\n\t2. Search Contact\n\t3. Help\n\t4. Exit\n\t >";
-    cin >> choice;
-
-    switch(choice)
-    {
-        case 1:
-            addContact();
-            break;
-        case 2:
-            searchContact();
-            break;
-        case 3:
-            help();
-            break;
-        case 4:
-            self_exit();
-            break;
-        default:
-            cout << "\n\n\tInvalid Input !";
-            cout << "\n\tPress Any Key To Continue. .";
-            getch();
-            main();
+void saveContactsToFile(const vector<Contact>& contacts) {
+    ofstream outFile("contacts.txt");
+    for (const auto& contact : contacts) {
+        outFile << contact.name << "," << contact.phone << "," << contact.email << "\n";
     }
-    return 0;
 }
 
-void self_exit()
-{
-    system("cls");
-	cout<< "\n\n\n\t\tThank You For Using !";
-	exit(1);
-}
+vector<Contact> loadContactsFromFile() {
+    vector<Contact> contacts;
+    ifstream inFile("contacts.txt");
+    string line;
 
-void help()
-{
-    cout << "This Displays Help";
-}
+    while (getline(inFile, line)) {
+        size_t pos1 = line.find(',');
+        size_t pos2 = line.rfind(',');
 
-void addContact()
-{
-    ofstream phone("number,txt", ios::app);
-    system("cls");
-    cout << "\n\n\tEnter First Name : ";
-    cin >> fname;
-    cout << "\n\tEnter Last Name : ";
-    cin >> lname;
-    cout<<"\n\tEnter 10-Digit Phone Number : ";
-    cin >> phone_num;
-
-    if(check_digits(phone_num) == true)
-    {
-        if(check_numbers(phone_num) == true)
-        {
-            if(phone.is_open())
-            {
-                phone << fname << " " << lname << " " << phone_num << endl;
-                cout << "\n\tContact saved Successfully !";
-            }
-            else
-            {
-                cout << "\n\tError Opening File !";
-            }
-        }
-        else
-        {
-            cout << "\n\tA Phone Number Must Contain Numbers Only !";
+        if (pos1 != string::npos && pos2 != string::npos && pos1 != pos2) {
+            Contact contact;
+            contact.name = line.substr(0, pos1);
+            contact.phone = line.substr(pos1 + 1, pos2 - pos1 - 1);
+            contact.email = line.substr(pos2 + 1);
+            contacts.push_back(contact);
         }
     }
-    else
-    {
-        cout << "\n\tA Phone Number Must Contain 1 Digits.";
-    }
-    phone.close();
+
+    return contacts;
 }
 
-void searchContact()
-{
+void addContact(vector<Contact>& contacts) {
+    Contact newContact;
+    cout << "Enter name: ";
+    getline(cin >> ws, newContact.name);
+    cout << "Enter phone: ";
+    getline(cin, newContact.phone);
+    cout << "Enter email: ";
+    getline(cin, newContact.email);
+
+    contacts.push_back(newContact);
+    saveContactsToFile(contacts);
+    cout << "Contact added successfully.\n";
+}
+
+void displayContacts(const vector<Contact>& contacts) {
+    if (contacts.empty()) {
+        cout << "No contacts to display.\n";
+        return;
+    }
+
+    cout << "\n--- Contact List ---\n";
+    for (const auto& contact : contacts) {
+        cout << "Name: " << contact.name << "\n";
+        cout << "Phone: " << contact.phone << "\n";
+        cout << "Email: " << contact.email << "\n";
+        cout << "---------------------\n";
+    }
+}
+
+void searchContact(const vector<Contact>& contacts) {
+    string searchName;
+    cout << "Enter name to search: ";
+    getline(cin >> ws, searchName);
+
     bool found = false;
-    ifstream myfile("number.txt");
-    string  keyword;
-    cout << "\n\tEnter Name To Search : ";
-    cin >> keyword;
-    while(myfile >>fname >> lname >> phone_num)
-    {
-        if(keyword == fname || keyword == lname)
-        {
-            system("cls");
-            cout << "\n\n\n\t\tContact Details..";
-            cout << "\n\n\tfirst Name : " << fname;
-            cout << "\n\n\tLast Name : " << lname;
-            cout << "\n\n\tPhone Number : " << phone_num;
+    for (const auto& contact : contacts) {
+        if (contact.name == searchName) {
+            cout << "\nContact Found:\n";
+            cout << "Name: " << contact.name << "\n";
+            cout << "Phone: " << contact.phone << "\n";
+            cout << "Email: " << contact.email << "\n";
             found = true;
             break;
         }
     }
-    if(found == false)
-    cout << "\n\tNo such Contact Found";
+
+    if (!found)
+        cout << "Contact not found.\n";
 }
 
-bool check_digits(string x)
-{
-    if(x.length() == 10)
-    return true;
-    else 
-    return false;
-}
+void deleteContact(vector<Contact>& contacts) {
+    string nameToDelete;
+    cout << "Enter name to delete: ";
+    getline(cin >> ws, nameToDelete);
 
-bool check_numbers(string x)
-{
-    bool check = true;
+    auto it = remove_if(contacts.begin(), contacts.end(), [&](const Contact& c) {
+        return c.name == nameToDelete;
+    });
 
-
-    for(int i=0; i < x.length(); i++)
-    {
-        if(!(int(x[i]) >= 48 && int(x[i]) <=57))
-        {
-            check = false;
-            break;
-        }
+    if (it != contacts.end()) {
+        contacts.erase(it, contacts.end());
+        saveContactsToFile(contacts);
+        cout << "Contact deleted successfully.\n";
+    } else {
+        cout << "Contact not found.\n";
     }
+}
 
-    if(check == true)
-    return true;
-    if(check == false)
-    return false;
+int main() {
+    vector<Contact> contacts = loadContactsFromFile();
+    int choice;
+
+    do {
+        cout << "\n--- Contact Management System ---\n";
+        cout << "1. Add Contact\n";
+        cout << "2. Display Contacts\n";
+        cout << "3. Search Contact\n";
+        cout << "4. Delete Contact\n";
+        cout << "0. Exit\n";
+        cout << "Enter choice: ";
+        cin >> choice;
+        cin.ignore();
+
+        switch (choice) {
+            case 1: addContact(contacts); break;
+            case 2: displayContacts(contacts); break;
+            case 3: searchContact(contacts); break;
+            case 4: deleteContact(contacts); break;
+            case 0: cout << "Exiting...\n"; break;
+            default: cout << "Invalid choice.\n"; break;
+        }
+    } while (choice != 0);
+
+    return 0;
 }
